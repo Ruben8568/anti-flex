@@ -10,20 +10,21 @@ export default function ExpensesPage() {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
+  // Utility: always sort expenses by date (newest first)
+  const sortByDate = (items) =>
+    [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
+
   // Load expenses from backend (with fallback)
   useEffect(() => {
-    axios.get(`${API_URL}/expenses`)
-      .then(res => {
+    axios
+      .get(`${API_URL}/expenses`)
+      .then((res) => {
         console.log("API response:", res.data);
-        setExpenses(Array.isArray(res.data) ? res.data : []);
+        setExpenses(Array.isArray(res.data) ? sortByDate(res.data) : []);
       })
-      .catch(err => {
-        console.warn("Backend not reachable, using mock data:", err.message);
-        setExpenses([
-          { id: 1, title: "Coffee", amount: 4.5, date: "2025-08-01" },
-          { id: 2, title: "Groceries", amount: 52.3, date: "2025-08-15" },
-          { id: 3, title: "Netflix", amount: 15.99, date: "2025-08-20" },
-        ]);
+      .catch((err) => {
+        console.warn("Failed to fetch expenses:", err.message);
+        setExpenses([]); // fallback empty list (mock removed)
       });
   }, []);
 
@@ -43,42 +44,69 @@ export default function ExpensesPage() {
 
     if (editingId) {
       // --- Edit existing expense ---
-      const updatedExpense = { id: editingId, title, amount: parseFloat(amount), date };
+      const updatedExpense = {
+        expenseId: editingId,
+        title,
+        amount: parseFloat(amount),
+        date,
+      };
 
-      axios.put(`${API_URL}/expenses/${editingId}`, updatedExpense)
-        .then(res => {
-          setExpenses(expenses.map(exp => exp.id === editingId ? res.data : exp));
+      axios
+        .put(`${API_URL}/expenses/${editingId}`, updatedExpense)
+        .then((res) => {
+          setExpenses(
+            sortByDate(
+              expenses.map((exp) =>
+                exp.expenseId === editingId ? res.data : exp
+              )
+            )
+          );
           resetForm();
         })
-        .catch(err => {
+        .catch((err) => {
           console.warn("Using local edit (API failed)", err.message);
-          setExpenses(expenses.map(exp => exp.id === editingId ? updatedExpense : exp));
+          setExpenses(
+            sortByDate(
+              expenses.map((exp) =>
+                exp.expenseId === editingId ? updatedExpense : exp
+              )
+            )
+          );
           resetForm();
         });
     } else {
       // --- Add new expense ---
       const newExpense = { title, amount: parseFloat(amount), date };
 
-      axios.post(`${API_URL}/expenses`, newExpense)
-        .then(res => {
-          setExpenses([...expenses, res.data]);
+      axios
+        .post(`${API_URL}/expenses`, newExpense)
+        .then((res) => {
+          setExpenses(sortByDate([...expenses, res.data]));
           resetForm();
         })
-        .catch(err => {
+        .catch((err) => {
           console.warn("Using local add (API failed)", err.message);
-          setExpenses([...expenses, { ...newExpense, id: expenses.length + 1 }]);
+          setExpenses(
+            sortByDate([
+              ...expenses,
+              { ...newExpense, expenseId: (expenses.length + 1).toString() },
+            ])
+          );
           resetForm();
         });
     }
   };
 
   // Handle Delete
-  const deleteExpense = (id) => {
-    axios.delete(`${API_URL}/expenses/${id}`)
-      .then(() => setExpenses(expenses.filter(exp => exp.id !== id)))
-      .catch(err => {
+  const deleteExpense = (expenseId) => {
+    axios
+      .delete(`${API_URL}/expenses/${expenseId}`)
+      .then(() =>
+        setExpenses(sortByDate(expenses.filter((exp) => exp.expenseId !== expenseId)))
+      )
+      .catch((err) => {
         console.warn("Using local delete (API failed)", err.message);
-        setExpenses(expenses.filter(exp => exp.id !== id));
+        setExpenses(sortByDate(expenses.filter((exp) => exp.expenseId !== expenseId)));
       });
   };
 
@@ -87,7 +115,7 @@ export default function ExpensesPage() {
     setTitle(expense.title);
     setAmount(expense.amount);
     setDate(expense.date.split("T")[0]);
-    setEditingId(expense.id);
+    setEditingId(expense.expenseId);
   };
 
   return (
@@ -100,7 +128,7 @@ export default function ExpensesPage() {
           type="text"
           placeholder="Title"
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
           className="border p-2 mr-2"
           required
         />
@@ -108,18 +136,21 @@ export default function ExpensesPage() {
           type="number"
           placeholder="Amount"
           value={amount}
-          onChange={e => setAmount(e.target.value)}
+          onChange={(e) => setAmount(e.target.value)}
           className="border p-2 mr-2"
           required
         />
         <input
           type="date"
           value={date}
-          onChange={e => setDate(e.target.value)}
+          onChange={(e) => setDate(e.target.value)}
           className="border p-2 mr-2"
           required
         />
-        <button type="submit" className="bg-blue-500 text-white p-2 rounded mr-2">
+        <button
+          type="submit"
+          className="bg-blue-500 text-white p-2 rounded mr-2"
+        >
           {editingId ? "Update" : "Add"}
         </button>
         {editingId && (
@@ -144,11 +175,13 @@ export default function ExpensesPage() {
           </tr>
         </thead>
         <tbody>
-          {expenses.map(exp => (
-            <tr key={exp.id}>
+          {expenses.map((exp) => (
+            <tr key={exp.expenseId}>
               <td className="border p-2">{exp.title}</td>
               <td className="border p-2">${Number(exp.amount).toFixed(2)}</td>
-              <td className="border p-2">{new Date(exp.date).toLocaleDateString()}</td>
+              <td className="border p-2">
+                {new Date(exp.date).toLocaleDateString()}
+              </td>
               <td className="border p-2 space-x-2">
                 <button
                   onClick={() => editExpense(exp)}
@@ -157,7 +190,7 @@ export default function ExpensesPage() {
                   Edit
                 </button>
                 <button
-                  onClick={() => deleteExpense(exp.id)}
+                  onClick={() => deleteExpense(exp.expenseId)}
                   className="bg-red-500 text-white px-2 py-1 rounded"
                 >
                   Delete

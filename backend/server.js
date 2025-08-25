@@ -1,60 +1,107 @@
 import express from "express";
+import { randomUUID } from "crypto";
 import cors from "cors";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  PutCommand,
+  UpdateCommand,
+  DeleteCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// DynamoDB setup
+const client = new DynamoDBClient({ region: "us-east-1" });
+const ddb = DynamoDBDocumentClient.from(client);
+
+const TABLE_NAME = process.env.DYNAMO_TABLE || "ExpensesTable";
 
 app.use(cors());
 app.use(express.json());
 
-// Mock in-memory data
-let expenses = [
-  { id: 1, title: "Coffee-Backend-Mock", amount: 4.5, date: "2025-08-01" },
-  { id: 2, title: "Groceries-Backend-Mock", amount: 52.3, date: "2025-08-15" },
-  { id: 3, title: "Netflix-Backend-Mock", amount: 15.99, date: "2025-08-20" },
-];
-
 // Routes
-app.get("/expenses", (req, res) => {
-  res.json(expenses);
-});
-
-app.post("/expenses", (req, res) => {
-  const { title, amount, date } = req.body;
-  const newExpense = {
-    id: expenses.length ? expenses[expenses.length - 1].id + 1 : 1,
-    title,
-    amount,
-    date,
-  };
-  expenses.push(newExpense);
-  res.json(newExpense);
-});
-
-app.put("/expenses/:id", (req, res) => {
-  const { id } = req.params;
-  const { title, amount, date } = req.body;
-
-  const expenseIndex = expenses.findIndex((exp) => exp.id == id);
-  if (expenseIndex === -1) {
-    return res.status(404).json({ error: "Expense not found" });
+app.get("/expenses", async (req, res) => {
+  try {
+    const data = await ddb.send(new ScanCommand({ TableName: TABLE_NAME }));
+    const items = (data.Items || []).sort(
+      (a, b) => new Date(b.date) - new Date(a.date) // newest first
+    );
+    res.json(items);
+  } catch (err) {
+    console.error("Error fetching expenses:", err);
+    res.status(500).json({ error: "Failed to fetch expenses" });
   }
-
-  expenses[expenseIndex] = {
-    ...expenses[expenseIndex],
-    title,
-    amount,
-    date,
-  };
-
-  res.json(expenses[expenseIndex]);
 });
 
-app.delete("/expenses/:id", (req, res) => {
-  const { id } = req.params;
-  expenses = expenses.filter((exp) => exp.id != id);
-  res.json({ success: true });
+app.post("/expenses", async (req, res) => {
+  try {
+    const { title, amount, date } = req.body;
+    if (!title || !amount || !date) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const expenseId = randomUUID(); // Randomized ID
+    const newExpense = { expenseId, title, amount: Number(amount), date };
+
+    await ddb.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: newExpense,
+      })
+    );
+
+    res.json(newExpense);
+  } catch (err) {
+    console.error("Error adding expense:", err);
+    res.status(500).json({ error: "Failed to add expense" });
+  }
+});
+
+app.put("/expenses/:expenseId", async (req, res) => {
+  try {
+    const { expenseId } = req.params;
+    const { title, amount, date } = req.body;
+
+    const result = await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { expenseId },
+        UpdateExpression: "set title = :t, amount = :a, date = :d",
+        ExpressionAttributeValues: {
+          ":t": title,
+          ":a": Number(amount),
+          ":d": date,
+        },
+        ReturnValues: "ALL_NEW",
+      })
+    );
+
+    res.json(result.Attributes);
+  } catch (err) {
+    console.error("Error updating expense:", err);
+    res.status(500).json({ error: "Failed to update expense" });
+  }
+});
+
+app.delete("/expenses/:expenseId", async (req, res) => {
+  try {
+    const { expenseId } = req.params;
+
+    await ddb.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { expenseId },
+      })
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting expense:", err);
+    res.status(500).json({ error: "Failed to delete expense" });
+  }
 });
 
 app.listen(PORT, () => {
