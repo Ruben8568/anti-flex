@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function ExpensesPage() {
@@ -7,26 +8,38 @@ export default function ExpensesPage() {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const navigate = useNavigate();
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
-  // Utility: always sort expenses by date (newest first)
+  // Utility: sort expenses by date (newest first)
   const sortByDate = (items) =>
     [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  // Load expenses from backend (with fallback)
+  // Load expenses from backend (with token)
   useEffect(() => {
+    const token = localStorage.getItem("access_token"); // use access_token
+    if (!token) {
+      navigate("/login");
+      return;
+    }
     axios
-      .get(`${API_URL}/expenses`)
+      .get(`${API_URL}/expenses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       .then((res) => {
         console.log("API response:", res.data);
         setExpenses(Array.isArray(res.data) ? sortByDate(res.data) : []);
       })
       .catch((err) => {
         console.warn("Failed to fetch expenses:", err.message);
-        setExpenses([]); // fallback empty list (mock removed)
+        if (err.response?.status === 401) {
+          localStorage.removeItem("access_token");
+          navigate("/login");
+        }
+        setExpenses([]);
       });
-  }, []);
+  }, [navigate]);
 
   // Reset form fields
   const resetForm = () => {
@@ -39,8 +52,10 @@ export default function ExpensesPage() {
   // Handle Add or Update
   const handleSubmit = (e) => {
     e.preventDefault();
+    const token = localStorage.getItem("access_token"); // use access_token
 
     if (!title || !amount || !date) return alert("Please fill all fields!");
+    const headers = { Authorization: `Bearer ${token}` };
 
     if (editingId) {
       // --- Edit existing expense ---
@@ -52,7 +67,7 @@ export default function ExpensesPage() {
       };
 
       axios
-        .put(`${API_URL}/expenses/${editingId}`, updatedExpense)
+        .put(`${API_URL}/expenses/${editingId}`, updatedExpense, { headers })
         .then((res) => {
           setExpenses(
             sortByDate(
@@ -79,7 +94,7 @@ export default function ExpensesPage() {
       const newExpense = { title, amount: parseFloat(amount), date };
 
       axios
-        .post(`${API_URL}/expenses`, newExpense)
+        .post(`${API_URL}/expenses`, newExpense, { headers })
         .then((res) => {
           setExpenses(sortByDate([...expenses, res.data]));
           resetForm();
@@ -99,14 +114,21 @@ export default function ExpensesPage() {
 
   // Handle Delete
   const deleteExpense = (expenseId) => {
+    const token = localStorage.getItem("access_token"); // use access_token
+    const headers = { Authorization: `Bearer ${token}` };
+
     axios
-      .delete(`${API_URL}/expenses/${expenseId}`)
+      .delete(`${API_URL}/expenses/${expenseId}`, { headers })
       .then(() =>
-        setExpenses(sortByDate(expenses.filter((exp) => exp.expenseId !== expenseId)))
+        setExpenses(
+          sortByDate(expenses.filter((exp) => exp.expenseId !== expenseId))
+        )
       )
       .catch((err) => {
         console.warn("Using local delete (API failed)", err.message);
-        setExpenses(sortByDate(expenses.filter((exp) => exp.expenseId !== expenseId)));
+        setExpenses(
+          sortByDate(expenses.filter((exp) => exp.expenseId !== expenseId))
+        );
       });
   };
 
@@ -118,9 +140,23 @@ export default function ExpensesPage() {
     setEditingId(expense.expenseId);
   };
 
+  // Logout function
+  const handleLogout = () => {
+    localStorage.removeItem("access_token"); // clear access_token
+    navigate("/login");
+  };
+
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">My Expenses</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">My Expenses</h2>
+        <button
+          onClick={handleLogout}
+          className="bg-red-500 text-white px-4 py-2 rounded"
+        >
+          Logout
+        </button>
+      </div>
 
       {/* Add/Edit Form */}
       <form onSubmit={handleSubmit} className="mb-6">

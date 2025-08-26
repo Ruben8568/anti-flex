@@ -10,6 +10,15 @@ import {
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
+import { authMiddleware } from "./authMiddleware.js";
+import dotenv from "dotenv";
+
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, ".env") });
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -22,8 +31,9 @@ const TABLE_NAME = process.env.DYNAMO_TABLE || "ExpensesTable";
 app.use(cors());
 app.use(express.json());
 
+
 // Routes
-app.get("/expenses", async (req, res) => {
+app.get("/expenses", authMiddleware, async (req, res) => {
   try {
     const data = await ddb.send(new ScanCommand({ TableName: TABLE_NAME }));
     const items = (data.Items || []).sort(
@@ -36,7 +46,7 @@ app.get("/expenses", async (req, res) => {
   }
 });
 
-app.post("/expenses", async (req, res) => {
+app.post("/expenses", authMiddleware, async (req, res) => {
   try {
     const { title, amount, date } = req.body;
     if (!title || !amount || !date) {

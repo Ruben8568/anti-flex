@@ -85,4 +85,90 @@
 - Practiced error handling with graceful fallback.
 - Learned to trace API errors and fix config issues.
 
+---
 
+## Day 3: DynamoDB Integration & Full CRUD
+
+### What I Did
+
+- Connected backend API to **AWS DynamoDB** (NoSQL database).
+- Replaced mock data fallback in frontend — all expenses now come from DynamoDB.
+- Created backend CRUD routes with `@aws-sdk/lib-dynamodb`:
+  - `GET /expenses` → fetch all expenses from DynamoDB.
+  - `POST /expenses` → add new expense (using `randomUUID` for unique IDs).
+  - `PUT /expenses/:expenseId` → update an existing expense.
+  - `DELETE /expenses/:expenseId` → delete expense by ID.
+- Cleaned up DynamoDB table:
+  - Standardized **primary key** → `expenseId`.
+  - Ensured `amount` is stored as a **Number**, not a string.
+- Verified full flow: **frontend ↔ backend ↔ DynamoDB**.
+
+### What I Learned
+
+- DynamoDB basics: tables, partition keys, and data types.
+- How NoSQL differs from SQL (schema-less but still needs consistent keys).
+- Using `ScanCommand`, `PutCommand`, `UpdateCommand`, and `DeleteCommand` in DynamoDB.
+- How to structure `UpdateExpression` and `ExpressionAttributeValues` to safely update items.
+- Importance of consistent IDs — switched from timestamp IDs → `UUIDs`.
+
+### Struggles & Fixes
+
+- **Struggle**: Had no prior NoSQL experience, so DynamoDB setup felt confusing.  
+  → Fixed by carefully checking how DynamoDB stores attributes (`S` for string, `N` for number).
+- **Issue**: Frontend mock data vs backend schema mismatch.  
+  → Solved by cleaning data and aligning all fields (`title`, `amount`, `date`, `expenseId`).
+- **Problem**: Some old items in DynamoDB were missing `expenseId`.  
+  → Used a script to fix records and reinsert correctly.
+
+### Next Step
+
+- Add **authentication** (user-specific expenses).
+- Improve frontend UI (filters, totals, categories).
+- Deploy backend + DynamoDB setup (instead of local-only).
+
+---
+
+## Day 4: Authentication (Cognito) + Securing Expenses
+
+### What I Did
+
+- Integrated **AWS Cognito** for authentication (login/logout flow).
+- Configured backend middleware to validate **JWT access tokens** from Cognito.
+- Updated frontend:
+  - Login page exchanges credentials → receives `access_token`.
+  - Stored token in `localStorage`.
+  - `ExpensesPage` fetches expenses with `Authorization: Bearer <token>`.
+  - Added Logout button to clear token + redirect to login.
+- Verified full flow:
+  - Logged in → token stored → expenses visible.
+  - Logged out → redirected to login.
+  - Invalid/expired token → 401 response + auto logout.
+
+### What I Learned
+
+- Difference between **ID token** and **Access token**:
+  - ID token → user profile info.
+  - Access token → actual resource access (for API).
+- How to secure Express routes with Cognito JWT validation.
+- Using React Router’s `ProtectedRoute` pattern to guard pages.
+- How frontend state (Login vs Logout in navbar) depends on `localStorage`.
+
+### Struggles & Fixes
+
+- **Issue**: Used `id_token` instead of `access_token` → always got `401 Unauthorized`.  
+  → Fixed by switching to `access_token` for API requests.
+- **Problem**: `.env` file not loading in backend → `Region` and `Pool ID` were undefined.  
+  → Solved by installing/configuring `dotenv` properly and loading values at server startup.
+- **Error**: `useNavigate()` hook crashed because it was used outside a Router.  
+  → Fixed by restructuring `Logout` button logic so it only runs inside `<BrowserRouter>`.
+- **UI Bug**: Navbar always showed “Login” even after logging in.  
+  → Fixed by conditionally checking `localStorage` for token and updating text to “Logout”.
+- **Styling mismatch**: Login vs Logout links looked inconsistent.  
+  → Fixed with shared Tailwind classes for uniform appearance.
+
+### Next Step
+
+- **Day 5 focus** → UI polish:
+  - Improve navbar styling (consistent text weight, alignment, hover states).
+  - Enhance expenses table (striped rows, better buttons, mobile-friendly).
+  - Add layout spacing and responsive design.
