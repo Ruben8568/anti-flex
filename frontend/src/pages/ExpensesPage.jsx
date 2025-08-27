@@ -22,8 +22,24 @@ export default function ExpensesPage() {
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
+  //helper functions
+  function parseLocalDate(str) {
+    if (!str) return null;
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function formatForInput(dateStr) {
+  const d = parseLocalDate(dateStr);
+  if (!d) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
   const sortByDate = (items) =>
-    [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
+    [...items].sort((a, b) => parseLocalDate(b.date) - parseLocalDate(a.date));
 
   // Load expenses
   useEffect(() => {
@@ -71,12 +87,20 @@ export default function ExpensesPage() {
     setLoading(true);
 
     if (editingId) {
-      const updatedExpense = { title, amount: parseFloat(amount), date, category };
-        axios.put(`${API_URL}/expenses/${editingId}`, updatedExpense, { headers })
+      const updatedExpense = {
+        title,
+        amount: parseFloat(amount),
+        date,
+        category,
+      };
+      axios
+        .put(`${API_URL}/expenses/${editingId}`, updatedExpense, { headers })
         .then((res) => {
           setExpenses(
             sortByDate(
-              expenses.map((exp) => (exp.expenseId === editingId ? res.data : exp))
+              expenses.map((exp) =>
+                exp.expenseId === editingId ? res.data : exp
+              )
             )
           );
           toast.success("Expense updated!");
@@ -86,7 +110,9 @@ export default function ExpensesPage() {
           toast.error("Failed to update expense (using fallback)");
           setExpenses(
             sortByDate(
-              expenses.map((exp) => (exp.expenseId === editingId ? updatedExpense : exp))
+              expenses.map((exp) =>
+                exp.expenseId === editingId ? updatedExpense : exp
+              )
             )
           );
           resetForm();
@@ -135,15 +161,18 @@ export default function ExpensesPage() {
   const editExpense = (expense) => {
     setTitle(expense.title);
     setAmount(expense.amount);
-    setDate(expense.date.split("T")[0]);
+    setDate(formatForInput(expense.date));
     setCategory(expense.category || "Other");
     setEditingId(expense.expenseId);
   };
 
   const filteredExpenses = expenses.filter((exp) => {
-    const matchCategory = filterCategory ? exp.category === filterCategory : true;
-    const matchFrom = filterFrom ? new Date(exp.date) >= new Date(filterFrom) : true;
-    const matchTo = filterTo ? new Date(exp.date) <= new Date(filterTo) : true;
+    const expDate = parseLocalDate(exp.date);
+    const matchCategory = filterCategory
+      ? exp.category === filterCategory
+      : true;
+    const matchFrom = filterFrom ? expDate >= parseLocalDate(filterFrom) : true;
+    const matchTo = filterTo ? expDate <= parseLocalDate(filterTo) : true;
     return matchCategory && matchFrom && matchTo;
   });
 
@@ -157,7 +186,10 @@ export default function ExpensesPage() {
       {loading && <p className="text-gray-500 mb-4">Loading...</p>}
 
       {/* Add/Edit Form */}
-      <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+      <form
+        onSubmit={handleSubmit}
+        className="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2"
+      >
         <input
           type="text"
           placeholder="Title"
@@ -193,7 +225,10 @@ export default function ExpensesPage() {
           <option>Other</option>
         </select>
         <div className="flex space-x-2">
-          <button type="submit" className="bg-blue-500 text-white px-3 py-2 rounded w-full">
+          <button
+            type="submit"
+            className="bg-blue-500 text-white px-3 py-2 rounded w-full"
+          >
             {editingId ? "Update" : "Add"}
           </button>
           {editingId && (
@@ -254,12 +289,15 @@ export default function ExpensesPage() {
         </thead>
         <tbody>
           {filteredExpenses.map((exp, i) => (
-            <tr key={exp.expenseId} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+            <tr
+              key={exp.expenseId}
+              className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
+            >
               <td className="border p-2">{exp.title}</td>
               <td className="border p-2">{exp.category || "Other"}</td>
               <td className="border p-2">${Number(exp.amount).toFixed(2)}</td>
               <td className="border p-2">
-                {new Date(exp.date).toLocaleDateString()}
+                {parseLocalDate(exp.date).toLocaleDateString()}
               </td>
               <td className="border p-2 space-x-2">
                 <button

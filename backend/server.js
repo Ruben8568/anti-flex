@@ -1,4 +1,3 @@
-// backend/server.js
 import express from "express";
 import { randomUUID } from "crypto";
 import cors from "cors";
@@ -15,7 +14,7 @@ import { authMiddleware } from "./authMiddleware.js";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import serverless from "serverless-http"; // ✅ for Lambda
+import serverless from "serverless-http"; // for Lambda
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, ".env") });
@@ -27,14 +26,29 @@ const client = new DynamoDBClient({ region: "us-east-1" });
 const ddb = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.DYNAMO_TABLE || "ExpensesTable";
 
-app.use(cors());
+// CORS setup
+app.use(
+  cors({
+    origin: ["http://localhost:5173"], // later: add Netlify/Vercel domain here too
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
+// Explicitly respond to OPTIONS preflight
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.sendStatus(200);
+});
+
 app.use(express.json());
 
-/**
- * ✅ Middleware: strip API Gateway stage prefix (/default, /dev, etc.)
- */
+// Middleware: strip API Gateway stage prefix (e.g., "/default")
 app.use((req, res, next) => {
-  const stage = "/default"; // adjust if you create a different stage
+  const stage = "/default"; // change if you deploy to a different stage
   if (req.url.startsWith(stage)) {
     req.url = req.url.slice(stage.length) || "/";
   }

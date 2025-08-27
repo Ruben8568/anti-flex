@@ -1,8 +1,17 @@
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell, Legend
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 
@@ -11,11 +20,19 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState("monthly");
   const [rangeFrom, setRangeFrom] = useState("");
   const [rangeTo, setRangeTo] = useState("");
-  const [filterCategory, setFilterCategory] = useState(""); 
+  const [filterCategory, setFilterCategory] = useState("");
 
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
-  const COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#6366f1", "#22c55e", "#a855f7"];
+  const COLORS = [
+    "#3b82f6",
+    "#f59e0b",
+    "#10b981",
+    "#ef4444",
+    "#6366f1",
+    "#22c55e",
+    "#a855f7",
+  ];
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -40,7 +57,14 @@ export default function Dashboard() {
   // --- helpers ---
   const toMoney = (n) => Number(n || 0);
 
-  const monthStart = (d) => new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+  function parseLocalDate(str) {
+    if (!str) return null;
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d); // midnight local
+  }
+
+  const monthStart = (d) =>
+    new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
   const weekStartMon = (d) => {
     const x = new Date(d);
     const day = (x.getDay() + 6) % 7;
@@ -48,15 +72,23 @@ export default function Dashboard() {
     x.setHours(0, 0, 0, 0);
     return x;
   };
-  const dayStart = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+  const dayStart = (d) => {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
 
   const groupBy = (items, keyFn, labelFn) => {
     const map = new Map();
     for (const e of items) {
-      const d = new Date(e.date);
+      const d = parseLocalDate(e.date);
       const kDate = keyFn(d);
       const k = kDate.getTime();
-      const curr = map.get(k) || { label: labelFn(kDate), total: 0, sortKey: k };
+      const curr = map.get(k) || {
+        label: labelFn(kDate),
+        total: 0,
+        sortKey: k,
+      };
       curr.total += toMoney(e.amount);
       map.set(k, curr);
     }
@@ -92,10 +124,14 @@ export default function Dashboard() {
     const from = dayStart(new Date(rangeFrom));
     const to = dayStart(new Date(rangeTo));
     const inRange = scopedExpenses.filter((e) => {
-      const d = dayStart(new Date(e.date));
+      const d = dayStart(parseLocalDate(e.date));
       return d >= from && d <= to;
     });
-    return groupBy(inRange, (d) => dayStart(d), (d) => d.toLocaleDateString());
+    return groupBy(
+      inRange,
+      (d) => dayStart(d),
+      (d) => d.toLocaleDateString()
+    );
   }, [scopedExpenses, viewMode, rangeFrom, rangeTo]);
 
   // pie chart uses same scope
@@ -114,8 +150,11 @@ export default function Dashboard() {
     const now = new Date();
     return scopedExpenses
       .filter((e) => {
-        const d = new Date(e.date);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        const d = parseLocalDate(e.date);
+        return (
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth()
+        );
       })
       .reduce((sum, e) => sum + toMoney(e.amount), 0);
   }, [scopedExpenses]);
@@ -152,7 +191,10 @@ export default function Dashboard() {
             />
             <button
               type="button"
-              onClick={() => { setRangeFrom(""); setRangeTo(""); }}
+              onClick={() => {
+                setRangeFrom("");
+                setRangeTo("");
+              }}
               className="bg-gray-300 px-3 py-1 rounded"
             >
               Clear
