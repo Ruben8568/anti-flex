@@ -172,3 +172,52 @@
   - Improve navbar styling (consistent text weight, alignment, hover states).
   - Enhance expenses table (striped rows, better buttons, mobile-friendly).
   - Add layout spacing and responsive design.
+
+
+---
+## Day 5: Deployment Prep (Lambda + API Gateway + IAM)
+
+### What I Did
+
+- Prepared backend for deployment on **AWS Lambda**:
+  - Installed and configured `serverless-http` wrapper around Express.
+  - Added conditional local server (runs only outside Lambda).
+- Created **Lambda function** in AWS Console and uploaded backend ZIP.
+- Integrated with **API Gateway**:
+  - Tested API routes (`/expenses`) from Postman.
+  - Identified and fixed issues with handler config and API Gateway stage paths.
+- Fixed **IAM role permissions**:
+  - Updated Lambda execution role with a new inline policy that allows DynamoDB actions (`Query`, `PutItem`, `UpdateItem`, `DeleteItem`) on the `ExpensesTable`.
+  - Verified by testing DynamoDB access through Lambda logs.
+- Confirmed **JWT authentication middleware** still works inside Lambda.
+- Cleaned backend repo to a stable, deployment-ready state:
+  - `.env`, `server.js`, `lambda.js`, `authMiddleware.js`, and `package.json` all aligned for production.
+
+### What I Learned
+
+- How Lambda differs from a traditional Express server — Express must be wrapped with `serverless-http`.
+- Importance of **API Gateway stage URLs** (default adds `/default/` in path).
+- Debugging flow for Lambda:
+  - **500 Internal Server Error** → check handler path & runtime logs.
+  - **AccessDeniedException** → fix IAM role with explicit DynamoDB permissions.
+- Clean separation between **local dev** (runs on port 5001) and **deployed Lambda** (through API Gateway).
+
+### Struggles & Fixes
+
+- **Issue**: First Lambda test returned `Cannot GET /default/expenses`.  
+  → Fixed by aligning `server.handler` export with Lambda entry.
+- **Problem**: Missing permissions → `AccessDeniedException` from DynamoDB.  
+  → Solved by updating IAM execution role policy with correct DynamoDB actions.
+- **Error**: Got empty array responses.  
+  → Discovered test user (`test-user`) had no data; confirmed DynamoDB integration is working by inserting test data.
+- **Confusion**: Access token handling in Postman.  
+  → Skipped for now; will return when wiring real frontend auth.
+
+### Next Step
+
+- **Day 6 focus** → Frontend + backend integration in deployed environment:
+  - Update frontend to call **API Gateway endpoint** instead of local server.
+  - Implement Cognito login flow to fetch **access token** automatically.
+  - Verify end-to-end: login → token → expenses saved in DynamoDB (per user).
+
+---

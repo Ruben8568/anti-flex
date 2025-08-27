@@ -5,7 +5,7 @@ import cors from "cors";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
-  QueryCommand,   //  added
+  QueryCommand,
   PutCommand,
   UpdateCommand,
   DeleteCommand,
@@ -15,25 +15,34 @@ import { authMiddleware } from "./authMiddleware.js";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import serverless from "serverless-http"; // ✅ for Lambda
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, ".env") });
 
 const app = express();
-const PORT = process.env.PORT || 5001;
 
 // DynamoDB setup
 const client = new DynamoDBClient({ region: "us-east-1" });
 const ddb = DynamoDBDocumentClient.from(client);
-
 const TABLE_NAME = process.env.DYNAMO_TABLE || "ExpensesTable";
 
 app.use(cors());
 app.use(express.json());
 
 /**
- * GET /expenses
- * Fetch expenses for the logged-in user
+ * ✅ Middleware: strip API Gateway stage prefix (/default, /dev, etc.)
+ */
+app.use((req, res, next) => {
+  const stage = "/default"; // adjust if you create a different stage
+  if (req.url.startsWith(stage)) {
+    req.url = req.url.slice(stage.length) || "/";
+  }
+  next();
+});
+
+/**
+ * GET /expenses - Fetch expenses for the logged-in user
  */
 app.get("/expenses", authMiddleware, async (req, res) => {
   try {
@@ -58,8 +67,7 @@ app.get("/expenses", authMiddleware, async (req, res) => {
 });
 
 /**
- * POST /expenses
- * Add a new expense for the logged-in user
+ * POST /expenses - Add a new expense
  */
 app.post("/expenses", authMiddleware, async (req, res) => {
   try {
@@ -70,8 +78,8 @@ app.post("/expenses", authMiddleware, async (req, res) => {
 
     const expenseId = randomUUID();
     const newExpense = {
-      userId: req.userId,        // partition key
-      expenseId,                 // sort key
+      userId: req.userId,
+      expenseId,
       title,
       amount: Number(amount),
       date,
@@ -93,8 +101,7 @@ app.post("/expenses", authMiddleware, async (req, res) => {
 });
 
 /**
- * PUT /expenses/:expenseId
- * Update an expense for the logged-in user
+ * PUT /expenses/:expenseId - Update expense
  */
 app.put("/expenses/:expenseId", authMiddleware, async (req, res) => {
   try {
@@ -104,10 +111,7 @@ app.put("/expenses/:expenseId", authMiddleware, async (req, res) => {
     const result = await ddb.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
-        Key: {
-          userId: req.userId,      // always from auth
-          expenseId: expenseId,    // from route param
-        },
+        Key: { userId: req.userId, expenseId },
         UpdateExpression: "SET #t = :t, #a = :a, #d = :d, #c = :c",
         ExpressionAttributeNames: {
           "#t": "title",
@@ -137,8 +141,7 @@ app.put("/expenses/:expenseId", authMiddleware, async (req, res) => {
 });
 
 /**
- * DELETE /expenses/:expenseId
- * Delete an expense for the logged-in user
+ * DELETE /expenses/:expenseId - Delete expense
  */
 app.delete("/expenses/:expenseId", authMiddleware, async (req, res) => {
   try {
@@ -147,7 +150,7 @@ app.delete("/expenses/:expenseId", authMiddleware, async (req, res) => {
     await ddb.send(
       new DeleteCommand({
         TableName: TABLE_NAME,
-        Key: { userId: req.userId, expenseId }, // include both keys
+        Key: { userId: req.userId, expenseId },
       })
     );
 
@@ -158,6 +161,13 @@ app.delete("/expenses/:expenseId", authMiddleware, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend running at http://localhost:${PORT}`);
-});
+// Lambda handler
+export const handler = serverless(app);
+
+// Local dev server (only if not running in Lambda)
+if (!process.env.AWS_EXECUTION_ENV) {
+  const PORT = process.env.PORT || 5001;
+  app.listen(PORT, () => {
+    console.log(`Backend running at http://localhost:${PORT}`);
+  });
+}
