@@ -1,15 +1,60 @@
-import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ExpensesPage from "./pages/ExpensesPage";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage"; // ✅ Import RegisterPage
 import ProtectedRoute from "./components/ProtectedRoute";
+import Navbar from "./components/Navbar";
+import Dashboard from "./pages/Dashboard";
 
 function Home() {
-  return <h2>Welcome to Anti-Flex</h2>;
+  return (
+    <div className="text-center max-w-2xl mx-auto mt-12">
+      <img
+  src="/images/cat-cash.png"
+  alt="Cash Cat"
+  className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl mx-auto h-auto"
+/>
+      <h1 className="text-4xl font-bold text-blue-600 mb-4">Welcome to Anti-Flex</h1>
+      <p className="text-gray-700 text-lg mb-6">
+        Anti-Flex helps you take control of your finances by tracking expenses,
+        visualizing spending habits, and making smarter budgeting decisions. 
+      </p>
+    </div>
+  );
 }
 
+
 function About() {
-  return <h2>About Anti-Flex</h2>;
+  return (
+    <div className="max-w-3xl mx-auto mt-12 p-6 bg-white rounded shadow">
+            <img
+  src="/images/cat-chart.png"
+  alt="Cash Cat"
+  className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl mx-auto h-auto"
+/>
+      <h2 className="text-3xl font-bold text-blue-600 mb-4">About Anti-Flex</h2>
+      <p className="text-gray-700 mb-4">
+        Anti-Flex is a personal finance tracker designed to help you stop overspending
+        and start making informed financial decisions. We believe managing money should
+        be simple, secure, and accessible to everyone.
+      </p>
+
+      <h3 className="text-xl font-semibold mb-2"> Features</h3>
+      <ul className="list-disc list-inside text-gray-700 mb-4">
+        <li>Track your daily expenses with categories</li>
+        <li>Filter and search by date ranges and spending type</li>
+        <li>Visualize your finances with bar and pie charts</li>
+        <li>Secure authentication powered by AWS Cognito</li>
+        <li>Data stored safely in DynamoDB on AWS</li>
+      </ul>
+
+      <h3 className="text-xl font-semibold mb-2"> Built With</h3>
+      <p className="text-gray-700">
+        React + Tailwind (Frontend) · Node.js + Express (Backend) · AWS Cognito
+        (Authentication) · DynamoDB (Database)
+      </p>
+    </div>
+  );
 }
 
 function NotFound() {
@@ -17,7 +62,6 @@ function NotFound() {
 }
 
 export default function App() {
-  // Important: put hooks that need router context *inside* Shell
   return (
     <BrowserRouter>
       <Shell />
@@ -26,54 +70,18 @@ export default function App() {
 }
 
 function Shell() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const [token, setToken] = useState(() => localStorage.getItem("access_token"));
-
-  // Keep token in sync when route changes (e.g., after login/logout navigations)
-  useEffect(() => {
-    setToken(localStorage.getItem("access_token"));
-  }, [location]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    setToken(null);            // update UI immediately
-    navigate("/login");        // go to login
-  };
-
-  // Make nav items look consistent
-  const navItemStyle = {
-    marginRight: "1rem",
-    color: "white",
-    textDecoration: "none",
-    cursor: "pointer",
-    fontWeight: 400,
-  };
 
   return (
     <>
       <header>
-        <h1>Anti-Flex</h1>
+        <Navbar />
       </header>
 
-      <nav style={{ marginBottom: "1rem" }}>
-        <Link to="/" style={navItemStyle}>Home</Link>
-        <Link to="/expenses" style={navItemStyle}>Expenses</Link>
-        <Link to="/about" style={navItemStyle}>About</Link>
-
-        {!token ? (
-          <Link to="/login" style={navItemStyle}>Login</Link>
-        ) : (
-          // span instead of button so it blends with the links
-          <span onClick={handleLogout} style={navItemStyle}>Logout</span>
-        )}
-      </nav>
-
-      <main>
+      <main className="p-4">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} /> {/* New route */}
           <Route
             path="/expenses"
             element={
@@ -82,12 +90,20 @@ function Shell() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/about" element={<About />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
 
-      <footer>
+      <footer className="text-center py-4 text-gray-500">
         <p>© {new Date().getFullYear()} Anti-Flex. All rights reserved.</p>
       </footer>
     </>

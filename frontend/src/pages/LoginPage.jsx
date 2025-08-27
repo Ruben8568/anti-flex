@@ -41,7 +41,7 @@ export default function LoginPage() {
       localStorage.setItem("id_token", authResult.IdToken);
       localStorage.setItem("refresh_token", authResult.RefreshToken);
 
-      navigate("/expenses");
+      navigate("/dashboard");
     } catch (err) {
       console.error("Login failed", err.response?.data || err.message);
       setError("Invalid username or password.");
@@ -54,6 +54,11 @@ export default function LoginPage() {
         onSubmit={handleLogin}
         className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md"
       >
+        <img
+          src="/images/cat-login.png"
+          alt="cat log-in"
+          className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl mx-auto h-auto"
+        />
         <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
 
         {error && (
