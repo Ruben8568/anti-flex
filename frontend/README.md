@@ -1,5 +1,7 @@
 # Anti-Flex 💰
 
+[Link](https://main.dzog8laldik5l.amplifyapp.com/)
+
 A full-stack **Anti-Flex** application built with **React (Vite)** on the frontend and **Node.js + Express + AWS Lambda** on the backend. Users can register, log in via **AWS Cognito**, and manage expenses stored in **AWS DynamoDB**, with interactive charts and dashboards.
 
 ---
