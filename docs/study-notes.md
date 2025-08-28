@@ -173,8 +173,8 @@
   - Enhance expenses table (striped rows, better buttons, mobile-friendly).
   - Add layout spacing and responsive design.
 
-
 ---
+
 ## Day 5: Deployment Prep (Lambda + API Gateway + IAM)
 
 ### What I Did
@@ -221,3 +221,43 @@
   - Verify end-to-end: login → token → expenses saved in DynamoDB (per user).
 
 ---
+
+## Day 6: End-to-End Deployment Testing
+
+### What I Did
+
+- Updated **frontend API base URL** to point to **API Gateway endpoint** instead of local backend.
+- Verified requests now reach deployed Lambda → DynamoDB.
+- Added debugging logs in Lambda to confirm user IDs are passed through JWT.
+- Inserted test data in DynamoDB with real `userId` from token for validation.
+- Ensured `.env` values are aligned across local dev and Lambda runtime:
+  - `COGNITO_REGION`
+  - `COGNITO_USER_POOL_ID`
+  - `EXPENSES_TABLE`
+- Cleaned backend code for deployment consistency:
+  - `lambda.js` properly exports handler.
+  - `authMiddleware.js` validates access tokens reliably.
+  - `server.js` runs both locally and in Lambda without conflict.
+
+### What I Learned
+
+- Importance of aligning **frontend API URL** with deployed environment.
+- How JWT `sub` field (user ID) ties expenses to a specific user.
+- DynamoDB returns empty results if `userId` mismatch occurs → reinforced value of consistent token testing.
+- Debugging Lambda requires careful log inspection since API Gateway only returns generic error messages.
+
+### Struggles & Fixes
+
+- **Problem**: Initially got `No authorization header`.  
+  → Fixed by sending `Authorization: Bearer <access_token>` in requests.
+- **Issue**: DynamoDB query returned blank arrays.  
+  → Solved by ensuring test data had matching `userId` (from Cognito `sub`).
+- **Error**: Postman tests failed without valid access token.  
+  → Skipped manual token generation for now, will automate in frontend login flow.
+
+
+### Final note ###
+
+- The application is fully hosted and running.
+- Auto deployment is completely set up, so the application can be updated via Github commits.
+- Additional features can be added later.
