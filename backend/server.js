@@ -1,6 +1,5 @@
 import express from "express";
 import { randomUUID } from "crypto";
-import cors from "cors";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -26,29 +25,12 @@ const client = new DynamoDBClient({ region: "us-east-1" });
 const ddb = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.DYNAMO_TABLE || "ExpensesTable";
 
-// CORS setup
-app.use(
-  cors({
-    origin: ["http://localhost:5173"], // later: add Netlify/Vercel domain here too
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-
-// Explicitly respond to OPTIONS preflight
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.sendStatus(200);
-});
-
+// Parse JSON
 app.use(express.json());
 
-// Middleware: strip API Gateway stage prefix (e.g., "/default")
+// Middleware: strip API Gateway stage prefix 
 app.use((req, res, next) => {
-  const stage = "/default"; // change if you deploy to a different stage
+  const stage = "/default"; 
   if (req.url.startsWith(stage)) {
     req.url = req.url.slice(stage.length) || "/";
   }
@@ -178,7 +160,7 @@ app.delete("/expenses/:expenseId", authMiddleware, async (req, res) => {
 // Lambda handler
 export const handler = serverless(app);
 
-// Local dev server (only if not running in Lambda)
+// Local dev server 
 if (!process.env.AWS_EXECUTION_ENV) {
   const PORT = process.env.PORT || 5001;
   app.listen(PORT, () => {

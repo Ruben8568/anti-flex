@@ -2,8 +2,8 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import jwkToPem from "jwk-to-pem";
 
-const region = "us-east-1"; // your Cognito pool region
-const userPoolId = "us-east-1_5gXfVTSQA"; // replace with your actual pool ID
+const region = "us-east-1"; 
+const userPoolId = "us-east-1_5gXfVTSQA"; 
 
 let pems = null;
 
