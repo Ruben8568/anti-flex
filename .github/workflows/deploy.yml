@@ -8,7 +8,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -20,8 +19,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Install Amplify CLI
-        run: npm install -g @aws-amplify/cli
-
-      - name: Deploy to Amplify
-        run: amplify publish --yes
+      - name: Deploy to Amplify Hosting
+        uses: aws-actions/amplify-cli-action@v1
+        with:
+          amplify_command: publish
+          amplify_env: prod
